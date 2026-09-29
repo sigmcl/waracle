@@ -1,0 +1,49 @@
+@baseUrl = http://localhost:8080
+
+### Remove all existing data
+POST {{baseUrl}}/admin/reset
+
+### Seed one hotel and six rooms
+POST {{baseUrl}}/admin/seed
+
+### Find the seeded hotel by name (case-insensitive exact match)
+GET {{baseUrl}}/hotels?name=Waracle%20Hotel
+
+### Find rooms available for the complete stay
+GET {{baseUrl}}/hotels/1/rooms?check_in=2027-06-10&check_out=2027-06-12&guests=2
+
+### Book one of the available rooms
+POST {{baseUrl}}/bookings
+Content-Type: application/json
+
+{
+  "room_id": 3,
+  "check_in": "2027-06-10",
+  "check_out": "2027-06-12",
+  "guests": 2
+}
+
+### Replace the value below with the reference returned by POST /bookings
+GET {{baseUrl}}/bookings/00000000-0000-0000-0000-000000000000
+
+### Repeat the booking request to receive 409 room_unavailable
+POST {{baseUrl}}/bookings
+Content-Type: application/json
+
+{
+  "room_id": 3,
+  "check_in": "2027-06-10",
+  "check_out": "2027-06-12",
+  "guests": 2
+}
+
+### An adjacent stay is allowed because checkout does not occupy that night
+POST {{baseUrl}}/bookings
+Content-Type: application/json
+
+{
+  "room_id": 3,
+  "check_in": "2027-06-12",
+  "check_out": "2027-06-14",
+  "guests": 2
+}
