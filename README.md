@@ -12,8 +12,9 @@ docker compose up --build
 curl -X POST http://localhost:8080/admin/seed
 ```
 
-The API runs at `http://localhost:8080` and applies migrations on startup. To
-use another port, run `HTTP_PORT=18080 docker compose up --build`.
+The API runs at `http://localhost:8080`. Compose runs the database migrations
+in a one-shot container before starting the API. To use another port, run
+`HTTP_PORT=18080 docker compose up --build`.
 
 ### Try the API with `curl`
 

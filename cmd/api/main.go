@@ -25,10 +25,6 @@ func main() {
 func run(logger *slog.Logger) error {
 	databaseURL := env("DATABASE_URL", "postgres://waracle:waracle@localhost:5432/waracle?sslmode=disable")
 
-	if err := hotel.Migrate(databaseURL); err != nil {
-		return fmt.Errorf("migrate database: %w", err)
-	}
-
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 

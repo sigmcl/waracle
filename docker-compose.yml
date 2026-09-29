@@ -7,6 +7,18 @@ services:
     ports:
       - "127.0.0.1:${HTTP_PORT:-8080}:8080"
     depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  migrate:
+    image: migrate/migrate:v4.20.1
+    command:
+      - -path=/migrations
+      - -database=postgres://waracle:waracle@postgres:5432/waracle?sslmode=disable
+      - up
+    volumes:
+      - ./internal/hotel/migrations:/migrations:ro
+    depends_on:
       postgres:
         condition: service_healthy
 
