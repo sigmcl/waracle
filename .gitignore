@@ -1,0 +1,4 @@
+.DS_Store
+.env
+waracle-api
+coverage.out
