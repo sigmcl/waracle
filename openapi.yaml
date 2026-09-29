@@ -1,0 +1,426 @@
+openapi: 3.1.0
+info:
+  title: Waracle Hotel Booking API
+  version: 1.0.0
+  description: REST API for hotel search, room availability, and bookings.
+servers:
+  - url: http://localhost:8080
+    description: Local Docker Compose environment
+security: []
+tags:
+  - name: Hotels
+    description: Hotel search and room availability.
+  - name: Bookings
+    description: Booking creation and retrieval.
+  - name: Administration
+    description: Local test data management.
+paths:
+  /hotels:
+    get:
+      tags: [Hotels]
+      operationId: findHotels
+      summary: Find hotels by name
+      description: Returns hotels whose names exactly match the query, ignoring case.
+      parameters:
+        - name: name
+          in: query
+          required: true
+          schema:
+            type: string
+            minLength: 1
+          example: Waracle Hotel
+      responses:
+        '200':
+          description: Matching hotels.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HotelsResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /hotels/{hotelID}/rooms:
+    get:
+      tags: [Hotels]
+      operationId: findAvailableRooms
+      summary: Find available rooms
+      description: >-
+        Returns rooms that can accommodate the whole party for every night of
+        the requested stay. Checkout is excluded from the occupied range.
+      parameters:
+        - name: hotelID
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+            minimum: 1
+          example: 1
+        - $ref: '#/components/parameters/CheckIn'
+        - $ref: '#/components/parameters/CheckOut'
+        - name: guests
+          in: query
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+          example: 2
+      responses:
+        '200':
+          description: Available rooms.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RoomsResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          description: Hotel not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error:
+                  code: hotel_not_found
+                  message: The hotel was not found.
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /bookings:
+    post:
+      tags: [Bookings]
+      operationId: createBooking
+      summary: Create a booking
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateBookingRequest'
+      responses:
+        '201':
+          description: Booking created.
+          headers:
+            Location:
+              description: URL of the created booking.
+              schema:
+                type: string
+              example: /bookings/3cd879de-4a31-48fc-9d19-264212b0c10b
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Booking'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          description: Room not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error:
+                  code: room_not_found
+                  message: The room was not found.
+        '409':
+          description: Room unavailable for the requested dates.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error:
+                  code: room_unavailable
+                  message: The room is unavailable for the requested dates.
+        '413':
+          description: Request body exceeds 64 KiB.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '415':
+          description: Request is not JSON.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /bookings/{reference}:
+    get:
+      tags: [Bookings]
+      operationId: findBooking
+      summary: Retrieve a booking
+      parameters:
+        - name: reference
+          in: path
+          required: true
+          schema:
+            type: string
+          example: 3cd879de-4a31-48fc-9d19-264212b0c10b
+      responses:
+        '200':
+          description: Booking details.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Booking'
+        '404':
+          description: Booking not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error:
+                  code: booking_not_found
+                  message: The booking was not found.
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /admin/reset:
+    post:
+      tags: [Administration]
+      operationId: resetData
+      summary: Delete all application data
+      responses:
+        '204':
+          description: Data deleted.
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /admin/seed:
+    post:
+      tags: [Administration]
+      operationId: seedData
+      summary: Seed test data
+      description: Creates one hotel and six rooms in an empty database.
+      responses:
+        '201':
+          description: Test data created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SeedResponse'
+        '409':
+          description: Database already contains data.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error:
+                  code: database_not_empty
+                  message: Reset the database before seeding it.
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+components:
+  parameters:
+    CheckIn:
+      name: check_in
+      in: query
+      required: true
+      schema:
+        type: string
+        format: date
+      example: '2027-06-10'
+    CheckOut:
+      name: check_out
+      in: query
+      required: true
+      description: Must be after check_in.
+      schema:
+        type: string
+        format: date
+      example: '2027-06-12'
+
+  responses:
+    BadRequest:
+      description: Invalid request or room capacity exceeded.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            invalidRequest:
+              value:
+                error:
+                  code: invalid_request
+                  message: check_out must be after check_in
+            capacityExceeded:
+              value:
+                error:
+                  code: capacity_exceeded
+                  message: The room cannot hold the requested number of guests.
+    InternalError:
+      description: Unexpected server error.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error:
+              code: internal_error
+              message: An internal error occurred.
+
+  schemas:
+    Hotel:
+      type: object
+      additionalProperties: false
+      required: [id, name]
+      properties:
+        id:
+          type: integer
+          format: int64
+          example: 1
+        name:
+          type: string
+          example: Waracle Hotel
+
+    HotelsResponse:
+      type: object
+      additionalProperties: false
+      required: [hotels]
+      properties:
+        hotels:
+          type: array
+          items:
+            $ref: '#/components/schemas/Hotel'
+
+    Room:
+      type: object
+      additionalProperties: false
+      required: [id, hotel_id, number, type, capacity]
+      properties:
+        id:
+          type: integer
+          format: int64
+          example: 3
+        hotel_id:
+          type: integer
+          format: int64
+          example: 1
+        number:
+          type: string
+          example: '201'
+        type:
+          type: string
+          enum: [single, double, deluxe]
+        capacity:
+          type: integer
+          minimum: 1
+          example: 2
+
+    RoomsResponse:
+      type: object
+      additionalProperties: false
+      required: [rooms]
+      properties:
+        rooms:
+          type: array
+          items:
+            $ref: '#/components/schemas/Room'
+
+    CreateBookingRequest:
+      type: object
+      additionalProperties: false
+      required: [room_id, check_in, check_out, guests]
+      properties:
+        room_id:
+          type: integer
+          format: int64
+          minimum: 1
+          example: 3
+        check_in:
+          type: string
+          format: date
+          example: '2027-06-10'
+        check_out:
+          type: string
+          format: date
+          description: Must be after check_in.
+          example: '2027-06-12'
+        guests:
+          type: integer
+          minimum: 1
+          example: 2
+
+    Booking:
+      type: object
+      additionalProperties: false
+      required: [reference, hotel_id, room_id, check_in, check_out, guests, created_at]
+      properties:
+        reference:
+          type: string
+          format: uuid
+          example: 3cd879de-4a31-48fc-9d19-264212b0c10b
+        hotel_id:
+          type: integer
+          format: int64
+          example: 1
+        room_id:
+          type: integer
+          format: int64
+          example: 3
+        check_in:
+          type: string
+          format: date
+          example: '2027-06-10'
+        check_out:
+          type: string
+          format: date
+          example: '2027-06-12'
+        guests:
+          type: integer
+          minimum: 1
+          example: 2
+        created_at:
+          type: string
+          format: date-time
+          example: '2026-09-29T09:00:21.982219Z'
+
+    SeedResponse:
+      type: object
+      additionalProperties: false
+      required: [hotels, rooms, bookings]
+      properties:
+        hotels:
+          type: integer
+          example: 1
+        rooms:
+          type: integer
+          example: 6
+        bookings:
+          type: integer
+          example: 0
+
+    ErrorResponse:
+      type: object
+      additionalProperties: false
+      required: [error]
+      properties:
+        error:
+          type: object
+          additionalProperties: false
+          required: [code, message]
+          properties:
+            code:
+              type: string
+              enum:
+                - invalid_request
+                - capacity_exceeded
+                - hotel_not_found
+                - room_not_found
+                - booking_not_found
+                - room_unavailable
+                - database_not_empty
+                - unsupported_media_type
+                - request_too_large
+                - internal_error
+            message:
+              type: string

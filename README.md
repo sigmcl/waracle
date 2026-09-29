@@ -35,6 +35,7 @@ curl http://localhost:8080/bookings/REPLACE_WITH_REFERENCE
 ```
 
 [`requests.http`](requests.http) contains the same workflow for HTTP clients.
+The API contract is documented in [`openapi.yaml`](openapi.yaml).
 
 Remove the containers and persisted database with:
 
