@@ -15,8 +15,27 @@ curl -X POST http://localhost:8080/admin/seed
 The API runs at `http://localhost:8080` and applies migrations on startup. To
 use another port, run `HTTP_PORT=18080 docker compose up --build`.
 
-Use [`requests.http`](requests.http) to exercise the complete workflow. Remove
-the containers and persisted database with:
+### Try the API with `curl`
+
+Run these calls in order after starting the application:
+
+```sh
+curl -X POST http://localhost:8080/admin/reset
+curl -X POST http://localhost:8080/admin/seed
+
+curl 'http://localhost:8080/hotels?name=Waracle%20Hotel'
+curl 'http://localhost:8080/hotels/1/rooms?check_in=2027-06-10&check_out=2027-06-12&guests=2'
+
+curl -X POST http://localhost:8080/bookings \
+  -H 'Content-Type: application/json' \
+  -d '{"room_id":3,"check_in":"2027-06-10","check_out":"2027-06-12","guests":2}'
+
+curl http://localhost:8080/bookings/REPLACE_WITH_REFERENCE
+```
+
+[`requests.http`](requests.http) contains the same workflow for HTTP clients.
+
+Remove the containers and persisted database with:
 
 ```sh
 docker compose down --volumes
